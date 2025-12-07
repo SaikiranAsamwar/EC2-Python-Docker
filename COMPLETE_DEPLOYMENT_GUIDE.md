@@ -38,9 +38,10 @@
 26. [Step 20: Create AWS EKS Cluster](#step-18-create-aws-eks-cluster)
 27. [Step 21: Deploy Application to EKS](#step-19-deploy-application-to-eks)
 28. [Step 21: Configure Jenkins](#step-21-configure-jenkins)
-29. [Step 21A: Jenkins + SonarQube Integration](#step-21a-jenkins--sonarqube-integration-in-pipeline)
-30. [Step 22: Create Jenkins Pipeline](#step-22-create-jenkins-pipeline)
-31. [Step 23: Install Prometheus & Grafana](#step-23-install-prometheus--grafana)
+29. [Step 21B: Configure Each Tool in Jenkins Pipeline](#step-21b-configure-each-tool-used-in-jenkins-pipeline)
+30. [Step 21A: Jenkins + SonarQube Integration](#step-21a-jenkins--sonarqube-integration-in-pipeline)
+31. [Step 22: Create Jenkins Pipeline](#step-22-create-jenkins-pipeline)
+32. [Step 23: Install Prometheus & Grafana](#step-23-install-prometheus--grafana)
 
 ### Reference & Support
 32. [Troubleshooting Guide](#troubleshooting-guide)
@@ -2000,7 +2001,868 @@ http://YOUR_EC2_PUBLIC_IP:8080
 3. **Docker Host URI**: `unix:///var/run/docker.sock`
 4. Click **Save**
 
-### 21.4 Install SonarQube Scanner Plugin
+---
+
+## Step 21B: Configure Each Tool Used in Jenkins Pipeline
+
+This section explains how to configure each DevOps tool that Jenkins uses during the CI/CD pipeline execution.
+
+### Tools Configuration Overview
+
+The Jenkins pipeline uses these 6 major tools:
+1. **Git** - Source code checkout
+2. **Python** - Backend build & test
+3. **Docker** - Container image building
+4. **AWS ECR** - Container registry
+5. **AWS CLI** - AWS service interactions
+6. **kubectl** - Kubernetes deployment
+
+### 21B.1 Configure Git in Jenkins
+
+Git is used for checking out your application code from GitHub.
+
+#### Verify Git is Installed
+
+```bash
+# SSH to EC2 and verify
+ssh -i your-key.pem ec2-user@YOUR_EC2_IP
+
+# Check Git installation
+git --version
+# Expected output: git version 2.40.1 (or higher)
+```
+
+#### Configure Git Plugin in Jenkins
+
+1. Go to **Manage Jenkins > Plugin Manager**
+2. Search for: `Git`
+3. If not installed, click **Install without restart**
+4. Go to **Manage Jenkins > Configure System**
+5. Scroll to **Git**
+6. **Git executable**: `/usr/bin/git` (auto-detected)
+7. Click **Save**
+
+#### Add GitHub Credentials to Jenkins
+
+1. Go to **Manage Jenkins > Manage Credentials**
+2. Click **System**
+3. Click **Global credentials**
+4. Click **Add Credentials**
+5. **Kind**: GitHub (if plugin installed) or **Username with password**
+6. **Username**: Your GitHub username
+7. **Password/Token**: Your GitHub personal access token
+8. **ID**: `github-creds`
+9. Click **Create**
+
+#### Test Git Connection
+
+Create a test pipeline:
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Test Git') {
+            steps {
+                checkout([$class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: 'https://github.com/YOUR_USERNAME/YOUR_REPO.git']]
+                ])
+                sh 'git log -1'
+            }
+        }
+    }
+}
+```
+
+---
+
+### 21B.2 Configure Python in Jenkins
+
+Python is used for backend building and testing.
+
+#### Verify Python Installation
+
+```bash
+# SSH to EC2
+ssh -i your-key.pem ec2-user@YOUR_EC2_IP
+
+# Check Python
+python3 --version
+# Expected output: Python 3.11.x
+
+# Check pip
+pip3 --version
+# Expected output: pip 23.x from ...
+```
+
+#### Install Python Plugin in Jenkins
+
+1. Go to **Manage Jenkins > Plugin Manager**
+2. Search for: `Python`
+3. Install **Python plugin**
+4. Click **Install without restart**
+
+#### Configure Python in Jenkins
+
+1. Go to **Manage Jenkins > Global Tool Configuration**
+2. Scroll to **Python**
+3. Click **Add Python**
+4. **Name**: `Python 3.11`
+5. **Install automatically**: Uncheck (we'll use system Python)
+6. **PYTHON_HOME**: `/usr`
+7. Click **Save**
+
+#### Test Python in Jenkins Pipeline
+
+Create a test job:
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Test Python') {
+            steps {
+                sh '''
+                    python3 --version
+                    pip3 --version
+                    pip3 list | grep -E "flask|pytest"
+                '''
+            }
+        }
+    }
+}
+```
+
+---
+
+### 21B.3 Configure Docker in Jenkins Pipeline
+
+Docker is used to build and push container images.
+
+#### Verify Docker Installation & Access
+
+```bash
+# SSH to EC2
+ssh -i your-key.pem ec2-user@YOUR_EC2_IP
+
+# Check Docker
+docker --version
+# Expected output: Docker version 24.0.x
+
+# Verify ec2-user can run Docker (no sudo needed)
+docker ps
+# Should show list of containers (even if empty)
+```
+
+#### Install Docker Pipeline Plugin
+
+1. Go to **Manage Jenkins > Plugin Manager**
+2. Search for: `Docker Pipeline`
+3. Click checkbox
+4. Also install: `Docker` plugin
+5. Click **Install without restart**
+
+#### Configure Docker in Jenkins
+
+1. Go to **Manage Jenkins > Configure System**
+2. Scroll to **Docker**
+3. **Docker URL**: Leave blank (defaults to unix socket)
+4. **Docker Host URI**: Leave blank
+5. Click **Save**
+
+#### Test Docker in Jenkins Pipeline
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Test Docker') {
+            steps {
+                sh '''
+                    docker --version
+                    docker ps
+                    docker images
+                '''
+            }
+        }
+    }
+}
+
+// Or using Docker plugin:
+pipeline {
+    agent any
+    stages {
+        stage('Build & Push Docker') {
+            steps {
+                script {
+                    docker.withRegistry('https://ECR_REGISTRY', 'ecr:aws-creds') {
+                        def app = docker.build("app:${BUILD_NUMBER}")
+                        app.push()
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+---
+
+### 21B.4 Configure AWS ECR in Jenkins
+
+AWS ECR (Elastic Container Registry) stores your Docker images.
+
+#### Verify AWS CLI Access
+
+```bash
+# SSH to EC2
+ssh -i your-key.pem ec2-user@YOUR_EC2_IP
+
+# Check AWS CLI
+aws --version
+# Expected output: aws-cli/2.13.x
+
+# Verify AWS credentials work
+aws sts get-caller-identity
+# Should show your AWS Account ID, User ARN, etc.
+
+# Test ECR access
+aws ecr list-repositories --region us-east-1
+```
+
+#### Install AWS Credentials Plugin
+
+1. Go to **Manage Jenkins > Plugin Manager**
+2. Search for: `AWS Credentials`
+3. Also install: `Pipeline: AWS Steps`
+4. Click **Install without restart**
+
+#### Add AWS Credentials to Jenkins
+
+1. Go to **Manage Jenkins > Manage Credentials**
+2. Click **System**
+3. Click **Global credentials**
+4. Click **Add Credentials**
+5. **Kind**: `AWS Credentials`
+6. **ID**: `aws-creds`
+7. **Access Key ID**: Your AWS Access Key
+8. **Secret Access Key**: Your AWS Secret Key
+9. Click **Create**
+
+#### Configure ECR Repository URLs
+
+1. Create ECR repositories first (if not done):
+```bash
+# SSH to EC2
+ssh -i your-key.pem ec2-user@YOUR_EC2_IP
+
+# Create backend repository
+aws ecr create-repository \
+  --repository-name task-manager/backend \
+  --region us-east-1
+
+# Create frontend repository
+aws ecr create-repository \
+  --repository-name task-manager/frontend \
+  --region us-east-1
+
+# Get ECR URL (format: ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com)
+aws sts get-caller-identity --query Account --output text
+# This is your ACCOUNT_ID
+```
+
+#### Configure Jenkins Environment Variables for ECR
+
+In your Jenkinsfile:
+```groovy
+pipeline {
+    agent any
+    
+    environment {
+        AWS_REGION = 'us-east-1'
+        AWS_ACCOUNT_ID = credentials('aws-account-id')
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        ECR_BACKEND_REPO = "${ECR_REGISTRY}/task-manager/backend"
+        ECR_FRONTEND_REPO = "${ECR_REGISTRY}/task-manager/frontend"
+    }
+    
+    stages {
+        stage('Push to ECR') {
+            steps {
+                script {
+                    // Login to ECR
+                    sh '''
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    '''
+                    
+                    // Push images
+                    sh '''
+                        docker push ${ECR_BACKEND_REPO}:latest
+                        docker push ${ECR_FRONTEND_REPO}:latest
+                    '''
+                }
+            }
+        }
+    }
+}
+```
+
+#### Test ECR Connection
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Test ECR') {
+            steps {
+                withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                    sh '''
+                        aws ecr list-repositories
+                        aws ecr list-images --repository-name task-manager/backend
+                    '''
+                }
+            }
+        }
+    }
+}
+```
+
+---
+
+### 21B.5 Configure AWS CLI in Jenkins
+
+AWS CLI is used to interact with AWS services (ECR, EKS, EC2, etc.).
+
+#### Verify AWS CLI Installation
+
+```bash
+# SSH to EC2
+ssh -i your-key.pem ec2-user@YOUR_EC2_IP
+
+# Check AWS CLI
+aws --version
+# Expected output: aws-cli/2.13.x
+
+# Verify AWS configuration
+aws configure list
+# Should show your credentials are configured
+```
+
+#### Configure AWS CLI in Jenkins
+
+The Ansible playbook already configured AWS CLI on the EC2 instance. Jenkins uses those same credentials.
+
+#### Add AWS Account ID Credential to Jenkins
+
+1. Go to **Manage Jenkins > Manage Credentials**
+2. Click **System > Global credentials**
+3. Click **Add Credentials**
+4. **Kind**: `Secret text`
+5. **Secret**: `123456789012` (your AWS Account ID - get from `aws sts get-caller-identity --query Account --output text`)
+6. **ID**: `aws-account-id`
+7. Click **Create**
+
+#### Configure Jenkins to Use AWS Credentials
+
+In your Jenkinsfile:
+```groovy
+pipeline {
+    agent any
+    
+    environment {
+        // AWS credentials setup
+        AWS_REGION = 'us-east-1'
+        AWS_ACCOUNT_ID = credentials('aws-account-id')
+    }
+    
+    stages {
+        stage('AWS Operations') {
+            steps {
+                withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                    sh '''
+                        # List S3 buckets
+                        aws s3 ls
+                        
+                        # Check IAM users
+                        aws iam list-users
+                        
+                        # Check EC2 instances
+                        aws ec2 describe-instances --query 'Reservations[].Instances[].[InstanceId,State.Name]'
+                    '''
+                }
+            }
+        }
+    }
+}
+```
+
+#### Test AWS CLI in Jenkins
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Test AWS CLI') {
+            steps {
+                sh '''
+                    # Basic AWS CLI test
+                    aws sts get-caller-identity
+                    
+                    # List EKS clusters
+                    aws eks list-clusters --region us-east-1
+                    
+                    # List ECR repositories
+                    aws ecr list-repositories --region us-east-1
+                '''
+            }
+        }
+    }
+}
+```
+
+---
+
+### 21B.6 Configure kubectl in Jenkins
+
+kubectl is used to deploy applications to Kubernetes (EKS).
+
+#### Verify kubectl Installation
+
+```bash
+# SSH to EC2
+ssh -i your-key.pem ec2-user@YOUR_EC2_IP
+
+# Check kubectl
+kubectl version --client
+# Expected output: version.Info{Major:"1", Minor:"28", ...}
+
+# Verify kubeconfig
+ls ~/.kube/config
+# File should exist and be readable
+```
+
+#### Install Kubernetes Plugin in Jenkins
+
+1. Go to **Manage Jenkins > Plugin Manager**
+2. Search for: `Kubernetes`
+3. Also install: `Kubernetes CLI`
+4. Click **Install without restart**
+
+#### Configure kubectl in Jenkins
+
+1. Go to **Manage Jenkins > Global Tool Configuration**
+2. Scroll to **kubectl**
+3. Click **Add kubectl**
+4. **Name**: `kubectl-1.28`
+5. **Kubernetes Version**: `1.28.0`
+6. **Install automatically**: Check this box
+7. Click **Save**
+
+Jenkins will auto-download kubectl when needed
+
+#### Configure Kubernetes Cluster Access
+
+1. Go to **Manage Jenkins > Configure System**
+2. Scroll to **Cloud > Kubernetes**
+3. **Kubernetes URL**: `https://YOUR_EKS_CLUSTER_API_ENDPOINT`
+   - Get this from: `aws eks describe-cluster --name task-manager-cluster --query 'cluster.endpoint'`
+4. **Kubernetes Namespace**: `default` (or your namespace)
+5. **Jenkins URL**: `http://JENKINS_IP:8080`
+6. Click **Save**
+
+#### Add kubeconfig to Jenkins
+
+You have two options:
+
+**Option A: Store kubeconfig as Jenkins Secret**
+
+1. Go to **Manage Jenkins > Manage Credentials**
+2. Click **System > Global credentials**
+3. Click **Add Credentials**
+4. **Kind**: `Secret file`
+5. **File**: Upload your `~/.kube/config` file
+6. **ID**: `kubeconfig-secret`
+7. Click **Create**
+
+**Option B: Use AWS IAM for authentication** (Recommended)
+
+```groovy
+pipeline {
+    agent any
+    
+    stages {
+        stage('Kubernetes Deploy') {
+            steps {
+                script {
+                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                        sh '''
+                            # Update kubeconfig from EKS
+                            aws eks update-kubeconfig \
+                              --name task-manager-cluster \
+                              --region us-east-1
+                            
+                            # Now kubectl works
+                            kubectl get nodes
+                        '''
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+#### Test kubectl in Jenkins
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Test kubectl') {
+            steps {
+                sh '''
+                    # Check kubectl version
+                    kubectl version --client
+                    
+                    # List clusters (if kubeconfig configured)
+                    kubectl cluster-info
+                    
+                    # List nodes
+                    kubectl get nodes
+                    
+                    # List pods in task-manager namespace
+                    kubectl get pods -n task-manager
+                '''
+            }
+        }
+    }
+}
+```
+
+---
+
+### 21B.7 Complete Jenkins Pipeline with All Tools Configuration
+
+Here's a complete example Jenkinsfile showing all tools properly configured:
+
+```groovy
+pipeline {
+    agent any
+    
+    // Environment variables for all tools
+    environment {
+        // AWS Configuration
+        AWS_REGION = 'us-east-1'
+        AWS_ACCOUNT_ID = credentials('aws-account-id')
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        ECR_BACKEND_REPO = "${ECR_REGISTRY}/task-manager/backend"
+        ECR_FRONTEND_REPO = "${ECR_REGISTRY}/task-manager/frontend"
+        
+        // Docker Configuration
+        DOCKER_BUILDKIT = '1'
+        
+        // SonarQube Configuration
+        SONAR_HOST_URL = 'http://sonarqube:9000'
+        
+        // Kubernetes Configuration
+        KUBECONFIG = '/root/.kube/config'
+    }
+    
+    // ========================================================
+    // TOOLS CONFIGURATION
+    // ========================================================
+    tools {
+        // Python tool
+        python 'Python 3.11'
+        
+        // kubectl tool (auto-downloaded)
+        // kubernetes 'kubectl-1.28'
+    }
+    
+    // ========================================================
+    // BUILD TRIGGERS
+    // ========================================================
+    triggers {
+        githubPush()  // Git trigger
+    }
+    
+    stages {
+        // ====================================================
+        // STAGE 1: Git - Checkout Code
+        // ====================================================
+        stage('📥 Checkout Code') {
+            steps {
+                script {
+                    echo "🔄 Git: Checking out code..."
+                    checkout scm
+                    sh 'git log -1 --oneline'
+                }
+            }
+        }
+        
+        // ====================================================
+        // STAGE 2: Python - Build & Test
+        // ====================================================
+        stage('🔨 Backend Build & Test (Python)') {
+            steps {
+                script {
+                    echo "📦 Python: Building backend..."
+                    dir('backend') {
+                        sh '''
+                            python3 --version
+                            pip3 --version
+                            pip3 install -r requirements.txt
+                            python3 -m pytest tests/ || echo "Tests completed"
+                        '''
+                    }
+                }
+            }
+        }
+        
+        // ====================================================
+        // STAGE 3: SonarQube - Code Analysis
+        // ====================================================
+        stage('🔍 SonarQube Code Analysis') {
+            steps {
+                script {
+                    echo "📊 SonarQube: Analyzing code..."
+                    withSonarQubeEnv('SonarQube') {
+                        sh '''
+                            sonar-scanner \
+                              -Dsonar.projectKey=task-manager \
+                              -Dsonar.sources=backend,frontend
+                        '''
+                    }
+                }
+            }
+        }
+        
+        // ====================================================
+        // STAGE 4: Docker - Build Images
+        // ====================================================
+        stage('🐳 Docker Build') {
+            steps {
+                script {
+                    echo "🔨 Docker: Building images..."
+                    sh '''
+                        docker build \
+                          -t ${ECR_BACKEND_REPO}:${BUILD_NUMBER} \
+                          -f backend/Dockerfile ./backend
+                        
+                        docker build \
+                          -t ${ECR_FRONTEND_REPO}:${BUILD_NUMBER} \
+                          -f frontend/Dockerfile .
+                    '''
+                }
+            }
+        }
+        
+        // ====================================================
+        // STAGE 5: AWS CLI & ECR - Push Images
+        // ====================================================
+        stage('📤 Push to AWS ECR') {
+            steps {
+                script {
+                    echo "🔐 AWS CLI: Logging into ECR..."
+                    sh '''
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    '''
+                    
+                    echo "📤 Docker & AWS CLI: Pushing to ECR..."
+                    sh '''
+                        docker push ${ECR_BACKEND_REPO}:${BUILD_NUMBER}
+                        docker push ${ECR_FRONTEND_REPO}:${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
+        
+        // ====================================================
+        // STAGE 6: AWS CLI & kubectl - Deploy to EKS
+        // ====================================================
+        stage('☸️ Deploy to Kubernetes (EKS)') {
+            steps {
+                script {
+                    echo "🚀 AWS CLI & kubectl: Deploying..."
+                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                        sh '''
+                            # AWS CLI: Update kubeconfig
+                            aws eks update-kubeconfig \
+                              --name task-manager-cluster \
+                              --region ${AWS_REGION}
+                            
+                            # kubectl: Apply manifests
+                            kubectl apply -f k8s/namespace.yaml
+                            kubectl apply -f k8s/backend/
+                            kubectl apply -f k8s/frontend/
+                            
+                            # kubectl: Update deployments
+                            kubectl -n task-manager set image \
+                              deployment/backend \
+                              backend=${ECR_BACKEND_REPO}:${BUILD_NUMBER} --record
+                            
+                            # kubectl: Wait for rollout
+                            kubectl -n task-manager rollout status deployment/backend --timeout=5m
+                        '''
+                    }
+                }
+            }
+        }
+        
+        // ====================================================
+        // STAGE 7: kubectl - Verification
+        // ====================================================
+        stage('✅ Verification') {
+            steps {
+                script {
+                    echo "🔍 kubectl: Verifying deployment..."
+                    sh '''
+                        # kubectl: Check pods
+                        kubectl -n task-manager get pods
+                        
+                        # kubectl: Check services
+                        kubectl -n task-manager get svc
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "📊 Pipeline completed"
+        }
+        success {
+            echo "✅ All stages succeeded!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+        }
+    }
+}
+```
+
+---
+
+### 21B.8 Tools Configuration Verification Checklist
+
+Run this in Jenkins to verify all tools are properly configured:
+
+```groovy
+pipeline {
+    agent any
+    
+    stages {
+        stage('🔍 Verify All Tools') {
+            steps {
+                script {
+                    echo "═══════════════════════════════════════"
+                    echo "TOOL VERIFICATION CHECKLIST"
+                    echo "═══════════════════════════════════════"
+                    
+                    // 1. Git
+                    echo "\n✓ Git:"
+                    sh 'git --version'
+                    
+                    // 2. Python
+                    echo "\n✓ Python:"
+                    sh 'python3 --version && pip3 --version'
+                    
+                    // 3. Docker
+                    echo "\n✓ Docker:"
+                    sh 'docker --version && docker ps'
+                    
+                    // 4. AWS CLI
+                    echo "\n✓ AWS CLI:"
+                    sh 'aws --version'
+                    
+                    // 5. kubectl
+                    echo "\n✓ kubectl:"
+                    sh 'kubectl version --client'
+                    
+                    // 6. SonarQube Scanner
+                    echo "\n✓ SonarQube Scanner:"
+                    sh 'sonar-scanner --version || echo "Install via Jenkins plugin"'
+                    
+                    echo "\n═══════════════════════════════════════"
+                    echo "✅ ALL TOOLS VERIFIED"
+                    echo "═══════════════════════════════════════"
+                }
+            }
+        }
+    }
+}
+```
+
+Run this job periodically to ensure all tools remain properly configured.
+
+---
+
+### 21B.9 Troubleshooting Tool Configuration Issues
+
+#### Git Issues
+
+| Problem | Solution |
+|---------|----------|
+| "Git command not found" | Run: `which git` on EC2, install if missing: `sudo dnf install git -y` |
+| "Permission denied (publickey)" | Add GitHub SSH key to Jenkins credentials or use token |
+| "Clone failed" | Check GitHub repository URL and credentials |
+
+#### Python Issues
+
+| Problem | Solution |
+|---------|----------|
+| "Python command not found" | Check: `python3 --version` on EC2, install if needed |
+| "Module not found" | Install dependencies: `pip3 install -r requirements.txt` |
+| "Permission denied" | May need to use `python3 -m pip` instead of `pip3` |
+
+#### Docker Issues
+
+| Problem | Solution |
+|---------|----------|
+| "Cannot connect to Docker daemon" | Check: `sudo systemctl status docker`, restart if needed |
+| "Permission denied" | Add jenkins user to docker group: `sudo usermod -aG docker jenkins` |
+| "Image build failed" | Check Dockerfile syntax, verify build context |
+
+#### AWS CLI / ECR Issues
+
+| Problem | Solution |
+|---------|----------|
+| "Unable to locate credentials" | Verify: `aws sts get-caller-identity` on EC2 |
+| "Access denied" | Check IAM permissions for ECR, EKS, etc. |
+| "Repository does not exist" | Create ECR repo: `aws ecr create-repository --repository-name task-manager/backend` |
+
+#### kubectl Issues
+
+| Problem | Solution |
+|---------|----------|
+| "Unable to connect to server" | Update kubeconfig: `aws eks update-kubeconfig --name task-manager-cluster` |
+| "forbidden" error | Check RBAC permissions in your Kubernetes role |
+| "No resources found" | Check namespace: `kubectl get pods -n task-manager` |
+
+---
+
+### 21B.10 Tool Configuration Best Practices
+
+✅ **DO:**
+- Keep tools updated regularly
+- Test credentials after Jenkins configuration changes
+- Monitor Jenkins logs for tool-related errors
+- Document any custom tool configurations
+- Use Jenkins credentials for sensitive data (API keys, tokens)
+- Verify tool access before running production pipelines
+
+❌ **DON'T:**
+- Hardcode credentials in Jenkinsfile
+- Share AWS keys or GitHub tokens
+- Skip tool verification after updates
+- Use root/admin for Jenkins pipeline execution
+- Store kubeconfig files in version control
+
+---
+
+### 21B.4 Install SonarQube Scanner Plugin
 
 1. Go to **Manage Jenkins > Plugin Manager**
 2. Click **Available plugins** tab
