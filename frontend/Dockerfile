@@ -12,8 +12,6 @@ COPY . .
 # RUN npm run build
 # The built files would be in dist/ or build/ directory
 
----
-
 # Stage 2 - Production Nginx server
 FROM nginx:alpine
 
