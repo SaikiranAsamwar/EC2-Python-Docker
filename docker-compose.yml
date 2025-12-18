@@ -20,13 +20,13 @@ services:
       - devops_network
     restart: unless-stopped
 
-  # Application Service (Backend + Frontend)
-  app:
-    image: saikiranasamwar4/task-manager:latest
+  # Backend Service
+  backend:
+    image: saikiranasamwar4/task-manager-backend:latest
     build:
-      context: .
-      dockerfile: backend/Dockerfile
-    container_name: devops-app
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: devops-backend
     environment:
       FLASK_ENV: production
       DATABASE_URL: postgresql://devops_user:devops_password@db:5432/devops_db
@@ -45,6 +45,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Frontend Service
+  frontend:
+    image: saikiranasamwar4/task-manager-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: devops-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - devops_network
+    restart: unless-stopped
 
 volumes:
   db_data:
