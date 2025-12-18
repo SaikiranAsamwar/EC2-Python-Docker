@@ -5,15 +5,22 @@ FROM python:3.11-slim
 WORKDIR /app/backend
 
 # Copy requirements file first for better caching
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 # Install Python dependencies including production server
 # psycopg2-binary includes pre-compiled binaries, so no gcc needed
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend application files
-COPY app/ ./app/
-COPY run.py config.py utils.py ./
+COPY backend/app/ ./app/
+COPY backend/run.py backend/config.py backend/utils.py ./
+
+# Copy frontend templates and static files for Flask to serve
+WORKDIR /app
+COPY frontend/ ./frontend/
+
+# Return to backend directory
+WORKDIR /app/backend
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app

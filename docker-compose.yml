@@ -24,8 +24,8 @@ services:
   backend:
     image: saikiranasamwar4/task-manager-backend:latest
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: devops-backend
     environment:
       FLASK_ENV: production
