@@ -120,6 +120,31 @@
       .error-message.show {
         display: block;
       }
+
+      .invalid-feedback {
+        display: none;
+        color: #ff4757;
+        font-size: 0.875em;
+        margin-top: 8px;
+        font-weight: 500;
+      }
+
+      .form-group input.is-invalid,
+      .form-group select.is-invalid {
+        border-color: #ff4757;
+        box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.1);
+      }
+
+      .form-group input.is-valid,
+      .form-group select.is-valid {
+        border-color: #2ed573;
+        box-shadow: 0 0 0 3px rgba(46, 213, 115, 0.1);
+      }
+
+      .form-group input.is-invalid ~ .invalid-feedback,
+      .form-group select.is-invalid ~ .invalid-feedback {
+        display: block;
+      }
     </style>
   </head>
   <body>
@@ -131,7 +156,7 @@
 
       <div id="errorMessage" class="error-message"></div>
 
-      <form id="loginForm" class="login-form">
+      <form id="loginForm" class="login-form needs-validation" novalidate>
         <div class="form-group">
           <label for="userRole">User Type</label>
           <select
@@ -144,6 +169,7 @@
             <option value="lead">Team Lead</option>
             <option value="member">Team Member</option>
           </select>
+          <div class="invalid-feedback">Please select a user type.</div>
         </div>
 
         <div class="form-group">
@@ -155,18 +181,27 @@
             placeholder="Enter your username"
             required
             autocomplete="username"
+            minlength="3"
           />
+          <div class="invalid-feedback">
+            Username is required (minimum 3 characters).
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="fullName">Full Name</label>
+          <label for="password">Password</label>
           <input
-            type="text"
-            id="fullName"
-            name="fullName"
-            placeholder="Enter your full name"
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter your password"
             required
+            autocomplete="current-password"
+            minlength="4"
           />
+          <div class="invalid-feedback">
+            Password is required (minimum 4 characters).
+          </div>
         </div>
 
         <button type="submit" class="login-btn">Login</button>
@@ -179,13 +214,58 @@
     </div>
 
     <script>
+      // Bootstrap-like form validation
+      const form = document.getElementById("loginForm");
+      const inputs = form.querySelectorAll("input[required], select[required]");
+
+      // Add real-time validation
+      inputs.forEach((input) => {
+        input.addEventListener("blur", function () {
+          validateField(this);
+        });
+
+        input.addEventListener("input", function () {
+          if (this.classList.contains("is-invalid")) {
+            validateField(this);
+          }
+        });
+      });
+
+      function validateField(field) {
+        if (!field.checkValidity()) {
+          field.classList.add("is-invalid");
+          field.classList.remove("is-valid");
+          return false;
+        } else {
+          field.classList.remove("is-invalid");
+          field.classList.add("is-valid");
+          return true;
+        }
+      }
+
+      function validateForm() {
+        let isValid = true;
+        inputs.forEach((input) => {
+          if (!validateField(input)) {
+            isValid = false;
+          }
+        });
+        return isValid;
+      }
+
       document
         .getElementById("loginForm")
         .addEventListener("submit", async function (e) {
           e.preventDefault();
+          e.stopPropagation();
+
+          // Validate form
+          if (!validateForm()) {
+            return;
+          }
 
           const username = document.getElementById("username").value.trim();
-          const fullName = document.getElementById("fullName").value.trim();
+          const password = document.getElementById("password").value;
           const userRole = document.getElementById("userRole").value;
           const errorMessage = document.getElementById("errorMessage");
 
@@ -206,7 +286,7 @@
               },
               body: JSON.stringify({
                 username: username,
-                full_name: fullName,
+                password: password,
                 role: userRole
               })
             });

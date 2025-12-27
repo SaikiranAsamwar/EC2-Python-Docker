@@ -1,9 +1,0 @@
-# DEPRECATED: Frontend deployment removed
-# The application now uses a single-container architecture where
-# the Flask backend serves both API endpoints and frontend templates.
-# 
-# All traffic should be routed to the app-service (backend-deployment.yaml)
-# which handles both frontend and backend functionality.
-#
-# If you need a separate reverse proxy or load balancer, deploy Nginx
-# separately and configure it to proxy all requests to app-service:5000

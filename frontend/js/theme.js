@@ -5,7 +5,7 @@
 // Initialize theme on page load
 document.addEventListener('DOMContentLoaded', () => {
     initializeTheme();
-    createThemeToggle();
+    setupThemeToggleListener();
 });
 
 /**
@@ -61,22 +61,16 @@ function toggleTheme() {
 }
 
 /**
- * Create theme toggle button in navbar
+ * Setup theme toggle button listener
  */
-function createThemeToggle() {
-    const navbar = document.querySelector('.nav-container');
-    if (!navbar) return;
-
-    const themeToggle = document.createElement('button');
-    themeToggle.id = 'themeToggle';
-    themeToggle.className = 'theme-toggle';
-    themeToggle.setAttribute('aria-label', 'Toggle theme');
-    themeToggle.onclick = toggleTheme;
-    
-    const currentTheme = localStorage.getItem('theme') || 'dark';
-    themeToggle.innerHTML = currentTheme === 'dark' ? '☀️' : '🌙';
-    
-    navbar.appendChild(themeToggle);
+function setupThemeToggleListener() {
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleTheme();
+        });
+    }
 }
 
 /**

@@ -316,14 +316,18 @@ def login_user():
     """Authenticate existing user and return user info"""
     data = request.get_json()
     
-    if not data or not all(k in data for k in ('username', 'role')):
+    if not data or not all(k in data for k in ('username', 'password', 'role')):
         return jsonify({'error': 'Missing required fields'}), 400
     
-    # Check if user exists
+    # Check if user exists with matching username and role
     user = User.query.filter_by(username=data['username'], role=data['role']).first()
     
     if not user:
-        return jsonify({'error': 'Account not found. Please register first.'}), 404
+        return jsonify({'error': 'Invalid username or password'}), 401
+    
+    # Verify password (simple comparison - in production, use hashed passwords)
+    if user.password != data['password']:
+        return jsonify({'error': 'Invalid username or password'}), 401
     
     return jsonify({
         'message': 'Login successful',

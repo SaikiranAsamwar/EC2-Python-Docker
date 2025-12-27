@@ -116,6 +116,12 @@ header h1 {
     padding: 0 30px;
 }
 
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
 .logo {
     font-size: 1.5em;
     font-weight: 700;
@@ -219,6 +225,27 @@ header h1 {
     color: var(--text-heading);
     transform: translateY(-2px);
     letter-spacing: 0.5px;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 10px;
+    transition: all 0.3s ease;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+}
+
+.theme-toggle:hover {
+    background: var(--bg-input);
+    transform: rotate(20deg) scale(1.1);
 }
 
 /* Active state with glow effect */
@@ -1397,135 +1424,41 @@ textarea::placeholder {
 
 /* Theme Toggle Button */
 .theme-toggle {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    width: 65px;
-    height: 65px;
+    width: 45px;
+    height: 45px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
-    border: 3px solid var(--bg-container);
-    font-size: 1.8em;
+    border: 2px solid var(--border-color);
+    font-size: 1.3em;
     cursor: pointer;
-    box-shadow: 0 8px 25px var(--shadow-hover), 
-                0 0 0 0 rgba(0, 212, 255, 0.4);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1000;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    overflow: hidden;
-}
-
-/* Ripple effect background */
-.theme-toggle::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s ease, height 0.6s ease;
-}
-
-.theme-toggle:hover::before {
-    width: 120%;
-    height: 120%;
-}
-
-/* Rotating border animation */
-.theme-toggle::after {
-    content: '';
-    position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    border-radius: 50%;
-    background: linear-gradient(45deg, 
-        var(--accent-color), 
-        var(--accent-hover), 
-        var(--accent-color));
-    z-index: -1;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    animation: rotate 3s linear infinite;
-}
-
-.theme-toggle:hover::after {
-    opacity: 1;
-}
-
-@keyframes rotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
 .theme-toggle:hover {
-    transform: translateY(-5px) scale(1.15) rotate(15deg);
-    box-shadow: 0 12px 40px var(--shadow-hover), 
-                0 0 0 8px rgba(0, 212, 255, 0.2);
+    transform: scale(1.1) rotate(15deg);
+    box-shadow: 0 6px 20px var(--shadow-hover);
+    background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-color) 100%);
 }
 
 .theme-toggle:active {
-    transform: translateY(-3px) scale(1.05) rotate(0deg);
-    box-shadow: 0 6px 20px var(--shadow-hover);
-}
-
-/* Pulse animation on page load */
-@keyframes pulseGlow {
-    0%, 100% {
-        box-shadow: 0 8px 25px var(--shadow-hover), 
-                    0 0 0 0 rgba(0, 212, 255, 0.4);
-    }
-    50% {
-        box-shadow: 0 8px 25px var(--shadow-hover), 
-                    0 0 0 15px rgba(0, 212, 255, 0);
-    }
-}
-
-.theme-toggle {
-    animation: pulseGlow 2s ease-in-out infinite;
-}
-
-.theme-toggle:hover {
-    animation: none;
-}
-
-/* Icon rotation animation */
-.theme-toggle {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(0.95) rotate(0deg);
+    box-shadow: 0 2px 8px var(--shadow-color);
 }
 
 /* Light mode specific adjustments */
 body.light-mode .theme-toggle {
     background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
-    box-shadow: 0 8px 25px rgba(255, 165, 0, 0.4), 
-                0 0 0 0 rgba(255, 165, 0, 0.4);
+    box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
 }
 
 body.light-mode .theme-toggle:hover {
-    box-shadow: 0 12px 40px rgba(255, 165, 0, 0.5), 
-                0 0 0 8px rgba(255, 165, 0, 0.2);
-}
-
-@keyframes pulseGlowLight {
-    0%, 100% {
-        box-shadow: 0 8px 25px rgba(255, 165, 0, 0.4), 
-                    0 0 0 0 rgba(255, 165, 0, 0.4);
-    }
-    50% {
-        box-shadow: 0 8px 25px rgba(255, 165, 0, 0.4), 
-                    0 0 0 15px rgba(255, 165, 0, 0);
-    }
-}
-
-body.light-mode .theme-toggle {
-    animation: pulseGlowLight 2s ease-in-out infinite;
+    box-shadow: 0 6px 20px rgba(255, 165, 0, 0.4);
 }
 
 /* Calendar Styles */

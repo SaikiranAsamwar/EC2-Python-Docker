@@ -14,23 +14,28 @@
     <nav class="navbar">
       <div class="nav-container">
         <h1 class="logo">📋 Task Manager - Team Member</h1>
-        <ul class="nav-links">
-          <li><a href="/member-dashboard" class="active">My Tasks</a></li>
-          <li>
-            <a href="#" id="notificationsLink">
-              Notifications
-              <span
-                id="notificationBadge"
-                class="notification-badge"
-                style="display: none"
-                >0</span
-              >
-            </a>
-          </li>
-          <li>
-            <a href="#" onclick="logout()" class="logout-link">🚪 Logout</a>
-          </li>
-        </ul>
+        <div class="nav-right">
+          <ul class="nav-links">
+            <li><a href="/member-dashboard" class="active">My Tasks</a></li>
+            <li>
+              <a href="#" id="notificationsLink">
+                Notifications
+                <span
+                  id="notificationBadge"
+                  class="notification-badge"
+                  style="display: none"
+                  >0</span
+                >
+              </a>
+            </li>
+            <li>
+              <a href="#" onclick="logout()" class="logout-link">🚪 Logout</a>
+            </li>
+          </ul>
+          <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+            🌙
+          </button>
+        </div>
       </div>
     </nav>
 

@@ -202,6 +202,31 @@
         font-size: 0.9em;
         margin: 8px 0;
       }
+
+      .invalid-feedback {
+        display: none;
+        color: #ff4757;
+        font-size: 0.875em;
+        margin-top: 8px;
+        font-weight: 500;
+      }
+
+      .form-group input.is-invalid,
+      .form-group select.is-invalid {
+        border-color: #ff4757;
+        box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.1);
+      }
+
+      .form-group input.is-valid,
+      .form-group select.is-valid {
+        border-color: #2ed573;
+        box-shadow: 0 0 0 3px rgba(46, 213, 115, 0.1);
+      }
+
+      .form-group input.is-invalid ~ .invalid-feedback,
+      .form-group select.is-invalid ~ .invalid-feedback {
+        display: block;
+      }
     </style>
   </head>
   <body>
@@ -214,7 +239,7 @@
       <div id="errorMessage" class="error-message"></div>
       <div id="successMessage" class="success-message"></div>
 
-      <form id="registerForm" class="register-form">
+      <form id="registerForm" class="register-form needs-validation" novalidate>
         <div class="form-group">
           <label for="fullName">Full Name</label>
           <input
@@ -223,7 +248,9 @@
             name="fullName"
             placeholder="Enter your full name"
             required
+            minlength="2"
           />
+          <div class="invalid-feedback">Full name is required (minimum 2 characters).</div>
         </div>
 
         <div class="form-group">
@@ -236,6 +263,7 @@
             required
             minlength="3"
           />
+          <div class="invalid-feedback">Username is required (minimum 3 characters).</div>
         </div>
 
         <div class="form-group">
@@ -247,6 +275,7 @@
             placeholder="Enter your email"
             required
           />
+          <div class="invalid-feedback">Please enter a valid email address.</div>
         </div>
 
         <div class="form-group">
@@ -259,6 +288,7 @@
             required
             minlength="6"
           />
+          <div class="invalid-feedback">Password must be at least 6 characters.</div>
         </div>
 
         <div class="form-group">
@@ -266,6 +296,115 @@
           <input
             type="password"
             id="confirmPassword"
+            name="confirmPassword"
+            placeholder="Confirm your password"
+            required
+          />
+          <div class="invalid-feedback">Please confirm your password.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="userRole">Select Role</label>
+          <select id="userRole" name="userRole" required>
+            <option value="">Choose your role...</option>
+            <option value="lead">Team Lead</option>
+            <option value="member">Team Member</option>
+          </select>
+          <div class="invalid-feedback">Please select a role.</div>
+        </div>
+
+        <button type="submit" class="register-btn">Create Account</button>
+      </form>
+            name="password"
+            placeholder="Create a password"
+            required
+            minlength="6"
+          />
+        </div>
+
+        <div class="form-group">
+      // Bootstrap-like form validation
+      const form = document.getElementById("registerForm");
+      const inputs = form.querySelectorAll("input[required], select[required]");
+      const passwordInput = document.getElementById("password");
+      const confirmPasswordInput = document.getElementById("confirmPassword");
+
+      // Add real-time validation
+      inputs.forEach(input => {
+        input.addEventListener("blur", function() {
+          validateField(this);
+        });
+
+        input.addEventListener("input", function() {
+          if (this.classList.contains("is-invalid")) {
+            validateField(this);
+          }
+        });
+      });
+
+      // Special validation for confirm password
+      confirmPasswordInput.addEventListener("input", function() {
+        validatePasswordMatch();
+      });
+
+      passwordInput.addEventListener("input", function() {
+        if (confirmPasswordInput.value) {
+          validatePasswordMatch();
+        }
+      });
+
+      function validateField(field) {
+        if (!field.checkValidity()) {
+          field.classList.add("is-invalid");
+          field.classList.remove("is-valid");
+          return false;
+        } else {
+          field.classList.remove("is-invalid");
+          field.classList.add("is-valid");
+          return true;
+        }
+      }
+
+      function validatePasswordMatch() {
+        if (confirmPasswordInput.value !== passwordInput.value) {
+          confirmPasswordInput.classList.add("is-invalid");
+          confirmPasswordInput.classList.remove("is-valid");
+          const feedback = confirmPasswordInput.nextElementSibling;
+          if (feedback && feedback.classList.contains("invalid-feedback")) {
+            feedback.textContent = "Passwords do not match.";
+          }
+          return false;
+        } else if (confirmPasswordInput.value.length > 0) {
+          confirmPasswordInput.classList.remove("is-invalid");
+          confirmPasswordInput.classList.add("is-valid");
+          return true;
+        }
+        return true;
+      }
+
+      function validateForm() {
+        let isValid = true;
+        inputs.forEach(input => {
+          if (!validateField(input)) {
+            isValid = false;
+          }
+        });
+        if (!validatePasswordMatch()) {
+          isValid = false;
+        }
+        return isValid;
+      }
+
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Validate form
+          if (!validateForm()) {
+            return;
+          }rd"
             name="confirmPassword"
             placeholder="Confirm your password"
             required
