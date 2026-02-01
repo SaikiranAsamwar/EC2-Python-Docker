@@ -133,11 +133,14 @@ docker ps
 ## Step 3: Install Docker Compose
 
 ```bash
-# Install Docker Compose v2 (plugin)
-sudo dnf install -y docker-compose-plugin
+# Download Docker Compose (standalone binary)
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+# Make it executable
+sudo chmod +x /usr/local/bin/docker-compose
 
 # Verify installation
-docker compose version
+docker-compose --version
 ```
 
 ---
