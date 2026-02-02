@@ -111,24 +111,6 @@ Add the following lines at the end of the file:
 
 Save the file (Ctrl+X, then Y, then Enter).
 
-### Step 5: Create Application User
-
-Create a dedicated user for running the application:
-
-```bash
-sudo useradd -m -s /bin/bash appuser
-```
-
-This creates a user named `appuser` with:
-- `-m`: Creates home directory
-- `-s /bin/bash`: Sets shell to bash
-
-Switch to this user:
-
-```bash
-sudo su - appuser
-```
-
 ---
 
 ## Installing Required Tools
@@ -199,18 +181,7 @@ sudo systemctl start docker
 sudo systemctl enable docker
 ```
 
-Add your user to the docker group to run Docker without sudo:
-
-```bash
-sudo usermod -a -G docker ec2-user
-sudo usermod -a -G docker appuser
-```
-
-Apply the new group membership:
-
-```bash
-newgrp docker
-```
+All Docker commands will be run with sudo since we're using root user.
 
 Verify Docker installation:
 
@@ -370,55 +341,43 @@ sudo systemctl status jenkins
 Create a directory for the project:
 
 ```bash
-mkdir -p ~/projects
-cd ~/projects
+sudo mkdir -p /opt/projects
+sudo cd /opt/projects
 ```
 
 Clone your repository (replace with your actual repository URL):
 
 ```bash
-git clone https://github.com/your-username/Python-DevOps.git
-cd Python-DevOps
+sudo git clone https://github.com/your-username/Python-DevOps.git
+sudo cd Python-DevOps
 ```
 
 If using local code, copy it to the directory instead.
 
-### Step 2: Create Python Virtual Environment
+### Step 2: Navigate to Backend
 
 Navigate to the backend directory:
 
 ```bash
-cd backend
+sudo cd /opt/projects/Python-DevOps/backend
 ```
 
-Create a virtual environment:
-
-```bash
-python3 -m venv venv
-```
-
-Activate the virtual environment:
-
-```bash
-source venv/bin/activate
-```
-
-You should see `(venv)` prefix in your terminal prompt.
+All installation commands will use sudo since we're running as root user.
 
 ### Step 3: Install Python Dependencies
 
-Ensure you're in the backend directory with the virtual environment activated.
+Ensure you're in the backend directory.
 
 Upgrade pip, setuptools, and wheel:
 
 ```bash
-pip install --upgrade pip setuptools wheel
+sudo python3 -m pip install --upgrade pip setuptools wheel
 ```
 
 Install dependencies from requirements.txt:
 
 ```bash
-pip install -r requirements.txt
+sudo python3 -m pip install -r requirements.txt
 ```
 
 This command reads the requirements.txt file and installs all specified Python packages with their specified versions.
@@ -426,7 +385,7 @@ This command reads the requirements.txt file and installs all specified Python p
 To verify all packages are installed:
 
 ```bash
-pip list
+sudo pip3 list
 ```
 
 ### Step 4: Review Backend Configuration
@@ -460,7 +419,7 @@ cat utils.py        # Utility functions
 To test the backend without Docker:
 
 ```bash
-python run.py
+sudo python3 run.py
 ```
 
 This should start the Flask development server. By default, it runs on http://localhost:5000
@@ -530,7 +489,7 @@ If no build process, frontend files are already ready to serve.
 Create a directory for PostgreSQL data persistence:
 
 ```bash
-mkdir -p ~/data/postgres
+sudo mkdir -p /opt/data/postgres
 ```
 
 ### Step 2: Review Database Configuration
@@ -552,8 +511,7 @@ Note the:
 Create a .env file for sensitive information:
 
 ```bash
-cd ~/projects/Python-DevOps
-cat > .env << EOF
+sudo bash -c 'cat > /opt/projects/Python-DevOps/.env << EOF
 # Database Configuration
 DB_NAME=appdb
 DB_USER=appuser
@@ -567,13 +525,13 @@ SECRET_KEY=your-secret-key-here
 
 # Other configurations
 LOG_LEVEL=INFO
-EOF
+EOF'
 ```
 
 Secure the .env file:
 
 ```bash
-chmod 600 .env
+sudo chmod 600 /opt/projects/Python-DevOps/.env
 ```
 
 ### Step 4: Create Database Initialization Script
@@ -616,7 +574,7 @@ chmod +x init-db.sh
 ### Step 1: Review Docker Compose Configuration
 
 ```bash
-cat docker-compose.yml
+sudo cat docker-compose.yml
 ```
 
 This file defines all services:
@@ -630,13 +588,13 @@ This file defines all services:
 Ensure you're in the project root directory:
 
 ```bash
-cd ~/projects/Python-DevOps
+sudo cd /opt/projects/Python-DevOps
 ```
 
 Build all images defined in docker-compose.yml:
 
 ```bash
-docker-compose build
+sudo docker-compose build
 ```
 
 This process will:
@@ -658,7 +616,7 @@ Successfully built [image-id]
 Start all services in the background:
 
 ```bash
-docker-compose up -d
+sudo docker-compose up -d
 ```
 
 The `-d` flag runs services in detached mode (background).
@@ -668,7 +626,7 @@ The `-d` flag runs services in detached mode (background).
 Check the status of all services:
 
 ```bash
-docker-compose ps
+sudo docker-compose ps
 ```
 
 Output should show all services with status "Up X seconds/minutes".
@@ -678,15 +636,15 @@ Output should show all services with status "Up X seconds/minutes".
 View logs from all services:
 
 ```bash
-docker-compose logs -f
+sudo docker-compose logs -f
 ```
 
 View logs from a specific service:
 
 ```bash
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f postgres
+sudo docker-compose logs -f backend
+sudo docker-compose logs -f frontend
+sudo docker-compose logs -f postgres
 ```
 
 The `-f` flag follows log output (like `tail -f`).
@@ -694,7 +652,7 @@ The `-f` flag follows log output (like `tail -f`).
 ### Step 6: Test Backend Service
 
 ```bash
-curl http://localhost:5000/
+sudo docker-compose exec backend curl http://localhost:5000/
 ```
 
 Should return a response from your Flask application.
@@ -714,7 +672,7 @@ Should display your frontend application.
 Verify PostgreSQL is accessible:
 
 ```bash
-docker-compose exec postgres psql -U appuser -d appdb -c "SELECT version();"
+sudo docker-compose exec postgres psql -U appuser -d appdb -c "SELECT version();"
 ```
 
 This command executes a SQL query in the PostgreSQL container.
@@ -724,13 +682,13 @@ This command executes a SQL query in the PostgreSQL container.
 When needed, stop all services:
 
 ```bash
-docker-compose down
+sudo docker-compose down
 ```
 
 Remove volumes (data) as well:
 
 ```bash
-docker-compose down -v
+sudo docker-compose down -v
 ```
 
 ---
