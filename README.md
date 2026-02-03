@@ -100,12 +100,8 @@ ssh -i your-key.pem ubuntu@your-ec2-public-ip
 ### 1.3 Initial System Update
 
 ```bash
-# Update all packages
-sudo apt-get update
-sudo apt-get upgrade -y
-
-# Install basic utilities
-sudo apt-get install -y git wget curl tar unzip vim htop net-tools
+sudo apt-get update && sudo apt-get upgrade -y
+sudo apt-get install -y git wget curl unzip
 ```
 
 ---
@@ -113,33 +109,10 @@ sudo apt-get install -y git wget curl tar unzip vim htop net-tools
 ## Step 2: Install Docker
 
 ```bash
-# Add Docker's official GPG key
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-
-# Setup Docker repository
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-# Update package list
-sudo apt-get update
-
-# Install Docker
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-# Start and enable Docker service
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# Add current user to docker group (to avoid using sudo)
+curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
-
-# Apply group changes
 newgrp docker
-
-# Verify installation
 docker --version
-docker ps
 ```
 
 ---
@@ -147,16 +120,8 @@ docker ps
 ## Step 3: Install Docker Compose
 
 ```bash
-# Download Docker Compose standalone binary
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-
-# Make it executable
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
-
-# Create symlink
-sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
-
-# Verify installation
 docker-compose --version
 ```
 
@@ -165,15 +130,8 @@ docker-compose --version
 ## Step 4: Install Python
 
 ```bash
-# Install Python and pip
-sudo apt-get install -y python3 python3-pip python3-venv python3-dev
-
-# Verify installation
-python3 --version
-pip3 --version
-
-# Install Python development tools
-sudo apt-get install -y build-essential libssl-dev libffi-dev
+sudo apt-get install -y python3 python3-pip python3-venv
+python3 --version && pip3 --version
 ```
 
 ---
@@ -181,21 +139,10 @@ sudo apt-get install -y build-essential libssl-dev libffi-dev
 ## Step 5: Install AWS CLI
 
 ```bash
-# Download AWS CLI
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
-
-# Unzip
-unzip awscliv2.zip
-
-# Install
-sudo ./aws/install
-
-# Verify
+unzip awscliv2.zip && sudo ./aws/install
 aws --version
-
-# Configure AWS credentials
 aws configure
-# Enter: Access Key ID, Secret Access Key, Region (us-east-1), Output format (json)
 ```
 
 ---
@@ -203,16 +150,8 @@ aws configure
 ## Step 6: Install kubectl
 
 ```bash
-# Download kubectl
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-
-# Make executable
-sudo chmod +x kubectl
-
-# Move to PATH
-sudo mv kubectl /usr/local/bin/
-
-# Verify
+sudo chmod +x kubectl && sudo mv kubectl /usr/local/bin/
 kubectl version --client
 ```
 
@@ -221,16 +160,8 @@ kubectl version --client
 ## Step 7: Install eksctl
 
 ```bash
-# Download eksctl
 curl -sLO "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz"
-
-# Extract
-tar -xzf eksctl_Linux_amd64.tar.gz
-
-# Move to PATH
-sudo mv eksctl /usr/local/bin/
-
-# Verify
+tar -xzf eksctl_Linux_amd64.tar.gz && sudo mv eksctl /usr/local/bin/
 eksctl version
 ```
 
@@ -239,16 +170,8 @@ eksctl version
 ## Step 8: Install Java
 
 ```bash
-# Install OpenJDK 17
-sudo apt-get install -y openjdk-17-jdk openjdk-17-jre
-
-# Verify installation
+sudo apt-get install -y openjdk-17-jdk
 java -version
-javac -version
-
-# Set JAVA_HOME environment variable
-echo "JAVA_HOME=$(which java)" >> ~/.bashrc
-source ~/.bashrc
 ```
 
 ---
@@ -397,6 +320,8 @@ sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 7. Click **Save**
 
 ---
+
+## Step 11: Install & Configure SonarQube
 
 ## Step 11: Install & Configure SonarQube
 
@@ -656,6 +581,105 @@ sudo tee /etc/systemd/system/node_exporter.service << 'EOF'
 [Unit]
 Description=Node Exporter
 After=network.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Start Node Exporter
+sudo systemctl daemon-reload
+sudo systemctl start node_exporter
+sudo systemctl enable node_exporter
+
+# Check status
+sudo systemctl status node_exporter
+```
+
+### 12.6 Verify Prometheus
+
+```bash
+# Check if Prometheus is listening
+sudo netstat -tlnp | grep 9090
+
+# Test Prometheus API
+curl http://localhost:9090/-/healthy
+
+# Access Prometheus UI
+# Open browser: http://your-ec2-public-ip:9090
+
+# Check targets
+# Go to Status → Targets to verify all targets are UP
+```
+
+### 12.7 Troubleshoot Prometheus Issues
+
+If Prometheus fails to start, use these commands:
+
+```bash
+# Check service status
+sudo systemctl status prometheus
+
+# View detailed logs
+sudo journalctl -u prometheus -n 100 --no-pager
+
+# Validate configuration
+sudo /usr/local/bin/promtool check config /etc/prometheus/prometheus.yml
+
+# Check permissions
+ls -la /etc/prometheus
+ls -la /var/lib/prometheus
+
+# Fix permissions
+sudo chown -R root:root /etc/prometheus
+sudo chown -R root:root /var/lib/prometheus
+
+# Check port availability
+sudo netstat -tlnp | grep 9090
+
+# If data is corrupted, clean and restart
+sudo systemctl stop prometheus
+sudo rm -rf /var/lib/prometheus/wal
+sudo mkdir -p /var/lib/prometheus
+sudo chown -R root:root /var/lib/prometheus
+sudo systemctl start prometheus
+```
+
+**Common Prometheus Errors and Solutions:**
+
+1. **"Permission denied" errors:**
+   ```bash
+   sudo chown -R root:root /etc/prometheus /var/lib/prometheus
+   ```
+
+2. **"Config file invalid" errors:**
+   ```bash
+   sudo /usr/local/bin/promtool check config /etc/prometheus/prometheus.yml
+   ```
+
+3. **Service fails to start:**
+   ```bash
+   sudo journalctl -u prometheus -n 50
+   # Check for specific error and fix accordingly
+   ```
+
+4. **Port already in use:**
+   ```bash
+   sudo lsof -i :9090  # Find what's using the port
+   sudo kill -9 <PID>  # Kill the process
+   ```
+
+5. **Corrupted WAL (Write-Ahead Log):**
+   ```bash
+   sudo systemctl stop prometheus
+   sudo rm -rf /var/lib/prometheus/wal
+   sudo systemctl start prometheus
+   ```
 
 [Service]
 User=root
@@ -1260,6 +1284,8 @@ kubectl logs -f deployment/backend -n taskmanager
 kubectl get svc -n taskmanager
 ```
 
+### 17.10 Configure Notifications (Optional)
+
 **Add Email Notifications:**
 
 1. Edit pipeline job → **Configure**
@@ -1285,7 +1311,7 @@ kubectl get svc -n taskmanager
    }
    ```
 
-### 17.13 Automatic Builds via GitHub Webhook
+### 17.11 Automatic Builds via GitHub Webhook
 
 **Test Webhook Trigger:**
 
@@ -1306,7 +1332,7 @@ kubectl get svc -n taskmanager
 - Check GitHub webhook delivery logs for errors
 - Ensure security group allows port 8080
 
-### 17.14 Pipeline Best Practices
+### 17.12 Pipeline Best Practices
 
 **Security:**
 - Never hardcode credentials in Jenkinsfile
@@ -1326,7 +1352,7 @@ kubectl get svc -n taskmanager
 - Monitor build duration
 - Track deployment frequency
 
-### 17.15 Common Pipeline Issues and Solutions
+### 17.13 Common Pipeline Issues and Solutions
 
 **Issue 1: Docker Login Failed**
 ```
@@ -1369,7 +1395,7 @@ Solution:
 - Check firewall/security group rules
 ```
 
-### 17.16 View Pipeline Metrics
+### 17.14 View Pipeline Metrics
 
 **In Jenkins Dashboard:**
 - Click on pipeline job name
@@ -1429,6 +1455,22 @@ Solution:
 2. **Application Metrics (Backend):**
    - HTTP Request Rate
    - Response Time
+   - Error Rate
+   - Database Connection Pool
+
+3. **Container Metrics (Kubernetes):**
+   - Pod CPU/Memory usage
+   - Container restarts
+   - Pod health status
+
+**Create Alerts in Prometheus:**
+
+1. Edit `/etc/prometheus/prometheus.yml`
+2. Add alerting rules
+3. Configure Alertmanager
+4. Set up notification channels (Email, Slack)
+
+---
    - Database Connections
    - Memory Usage
 
