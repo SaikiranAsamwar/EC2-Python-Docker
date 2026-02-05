@@ -375,41 +375,17 @@ docker info | grep "Storage Driver"
 
 ### 3.4 Install Docker Compose v2 (Plugin Method)
 
-**Method 1: Package Installation (Recommended)**
-
 ```bash
-# Install Docker Compose plugin from repository
-sudo dnf -y install docker-compose-plugin
-
-# Verify installation
-docker compose version
-
-# Expected output: Docker Compose version v2.24.x or higher
-```
-
-**Method 2: Manual Installation (if package not available)**
-
-```bash
-# Set desired Compose version
-COMPOSE_VERSION="v2.24.6"
-
-# Create Docker CLI plugins directory
-DOCKER_CLI_PLUGINS_DIR="$HOME/.docker/cli-plugins"
-mkdir -p "$DOCKER_CLI_PLUGINS_DIR"
-
-# Download Docker Compose plugin
-curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-$(uname -m)" \
-  -o "${DOCKER_CLI_PLUGINS_DIR}/docker-compose"
+# Download the latest version
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 
 # Make it executable
-chmod +x "${DOCKER_CLI_PLUGINS_DIR}/docker-compose"
+sudo chmod +x /usr/local/bin/docker-compose
 
 # Verify installation
-docker compose version
+docker-compose --version
 
-# For system-wide installation (optional)
-sudo mkdir -p /usr/local/lib/docker/cli-plugins
-sudo cp "${DOCKER_CLI_PLUGINS_DIR}/docker-compose" /usr/local/lib/docker/cli-plugins/
+# Expected output: Docker Compose version v2.x.x or higher
 ```
 
 ### 3.5 Docker Post-Installation Verification
