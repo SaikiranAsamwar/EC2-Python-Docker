@@ -738,8 +738,11 @@ git push origin --delete feature/new-feature
 ### 6.1 Install kubectl (Kubernetes CLI)
 
 ```bash
-# Set desired kubectl version (should match or be close to your EKS version)
-KUBECTL_VERSION="v1.29.0"
+# Fetch the latest stable kubectl version dynamically
+KUBECTL_VERSION=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
+
+# Verify the version was retrieved
+echo "Installing kubectl version: ${KUBECTL_VERSION}"
 
 # Download kubectl binary
 cd /tmp
@@ -761,8 +764,6 @@ sudo mv kubectl /usr/local/bin/
 
 # Verify installation
 kubectl version --client
-
-# Expected output: Client Version: v1.29.0
 
 # Clean up
 rm -f kubectl.sha256
